@@ -1,19 +1,19 @@
 # PROY-2026-GRUPOX
 
-Repositorio del grupo X para el proyecto del ramo *Proyecto Inicial (IWG400)* – 2026.
+Repositorio del grupo 10 para el proyecto del ramo *Proyecto Inicial (IWG400)* – 2026.
 
 ## 👥 Integrantes del grupo
 
 | Nombre y Apellido | Usuario GitHub | Correo USM               | Rol USM      |
 | ----------------- | -------------- | ------------------------ | ------------ |
-| Nombre1 Apellido1 | @usuario1      | nombre1.apellido1@usm.cl | 200000000000 |
-| Nombre2 Apellido2 | @usuario2      | nombre2.apellido2@usm.cl | 200000000000 |
-| Nombre3 Apellido3 | @usuario3      | nombre3.apellido3@usm.cl | 200000000000 |
-| Nombre4 Apellido4 | @usuario4      | nombre4.apellido4@usm.cl | 200000000000 |
+| Amelia Gonzalez   | @usuario1      | agonzalezmart@usm.cl     | 202630023-4  |
+| Isidora Núñez     | @rikumiau      | inunezra@usm.cl          | 202630022-6  |
+| Raúl Poblete      | @usuario3      | rpobletez@usm.cl         | 200000000000 |
+| Sofía Henriquez   | @usuario4      | shenriquezab@usm.cl      | 200000000000 |
 
 ## 📝 Descripción breve del proyecto
 
-> *Aquí va una descripción general del proyecto, incluyendo su propósito, contexto dentro del curso y motivación.*
+> *Sproutchi es una guía para el cuidado de las plantas, volviendo una tarea que puede llegar a ser tediosa en una actividad interactiva, divertida y novedosa a partir de una mascota virtual la cual cambiará su estado de animo dependiendo de la humedad de la tierra, contará con minijuegos e interacciones, muy similar a un tamagotchi. Incentivar a las personas a cuidar y ser responsables con sus plantas*
 
 ---
 
