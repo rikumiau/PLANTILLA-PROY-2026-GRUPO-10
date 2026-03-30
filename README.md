@@ -6,10 +6,10 @@ Repositorio del grupo 10 para el proyecto del ramo *Proyecto Inicial (IWG400)* �
 
 | Nombre y Apellido | Usuario GitHub | Correo USM               | Rol USM      |
 | ----------------- | -------------- | ------------------------ | ------------ |
-| Amelia Gonzalez   | @usuario1      | agonzalezmart@usm.cl     | 202630023-4  |
+| Amelia Gonzalez   | @Amepuck       | agonzalezmart@usm.cl     | 202630023-4  |
 | Isidora Núñez     | @rikumiau      | inunezra@usm.cl          | 202630022-6  |
-| Raúl Poblete      | @usuario3      | rpobletez@usm.cl         | 200000000000 |
-| Sofía Henriquez   | @usuario4      | shenriquezab@usm.cl      | 200000000000 |
+| Raúl Poblete      | @raulucid      | rpobletez@usm.cl         | 202630039-0  |
+| Sofía Henriquez   | @cheggysofi    | shenriquezab@usm.cl      | 202630018-8  |
 
 ## 📝 Descripción breve del proyecto
 
@@ -28,7 +28,8 @@ Repositorio del grupo 10 para el proyecto del ramo *Proyecto Inicial (IWG400)* �
 
 ## 🧩 Alcance del proyecto
 
-> *Definir qué aspectos cubre el proyecto y qué queda fuera del alcance (limitaciones).*
+> Nuestro proyecto cubrirá una necesidad de aprendizaje, cuidado y orientación en relación al mantenimiento de las plantas.
+> Queda fuera de nuestro alcance trabajar con componentes más avanzados y con funciones más desarrolladas, debido a nuestro limitado nivel de conocimiento y presupuesto ajustado.
 
 ---
 
