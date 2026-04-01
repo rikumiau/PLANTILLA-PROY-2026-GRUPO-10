@@ -20,9 +20,15 @@ Repositorio del grupo 10 para el proyecto del ramo *Proyecto Inicial (IWG400)* �
 ## 🎯 Objetivos
 
 - Objetivo general:
-  - *Describir el objetivo principal del proyecto.*
+  - Generar un dispositivo que ayude al cuidado de las plantas.
 - Objetivos específicos:
-  - *Listar objetivos concretos que permitirán alcanzar el objetivo general.*
+  - Buscar una solución relacionada al descuido de las plantas.
+  - Gestionar las ideas y recursos para la creación del dispositivo.
+  - Determinar de qué manera implementar el Arduino y sus componentes en el proyecto.
+  - Distribuir equitativamente las tareas.
+  - Llevar a cabo el diseño de la mascota virtual.
+  - Programar el sensor y vincularlo a la mascota virtual.
+  - Probar el dispositivo, identificar errores y solucionarlos. 
 
 ---
 
