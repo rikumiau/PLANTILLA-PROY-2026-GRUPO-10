@@ -81,7 +81,7 @@ Repositorio del grupo 10 para el proyecto del ramo *Proyecto Inicial (IWG400)* â
 
 ## ðŸ“… Cronograma de trabajo
 
-[Carta Gantt](https://google.com)
+[Carta Gantt](https://docs.google.com/spreadsheets/d/1Xh3XJGtd3cKJB7L-gk4nmskt91Dea2a2vNjcy0saGkk/edit?usp=sharing)
 
 ---
 
