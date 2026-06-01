@@ -46,7 +46,7 @@ Repositorio del grupo 10 para el proyecto del ramo *Proyecto Inicial (IWG400)* â
 - Microcontroladores:
   ESP32
 - Sensores:
-  sensor de humedad 
+  Sensor de humedad 
 
 ---
 
