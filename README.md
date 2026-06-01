@@ -44,8 +44,9 @@ Repositorio del grupo 10 para el proyecto del ramo *Proyecto Inicial (IWG400)* ‚
 - Lenguaje(s) de programaci√≥n:
   - Ej: Python, JavaScript, C++
 - Microcontroladores
-  - Arduino UNO Q, ESP32
+  ESP32
 - Sensores
+  sensor de humedad 
 
 ---
 
