@@ -44,9 +44,9 @@ Repositorio del grupo 10 para el proyecto del ramo *Proyecto Inicial (IWG400)* �
 - Lenguaje(s) de programación:
   - C++
 - Microcontroladores:
-  ESP32
+  ESP-WROOM-32
 - Sensores:
-  Sensor de humedad 
+  Sensor de Humedad de Suelo Modelo YL-38 y Sonda YL-69
 
 ---
 
@@ -68,8 +68,12 @@ Repositorio del grupo 10 para el proyecto del ramo *Proyecto Inicial (IWG400)* �
 
 
 1. **Clonar el repositorio:** `git clone ...`
-2. **Dependencias:** Listar qué librerías necesitan (ej: `pip install -r requirements.txt` o librerías de Arduino).
-3. **Ejecución:** Cómo se corre el código principal.
+2. **Dependencias:**
+   - Adafruit ST7735 and ST7789 Library
+   - Adafruit GFX Library
+   - UniversalTelegramBot  (by Brian Lough)
+   - ArduinoJson v6.x      (by Benoit Blanchon)
+4. **Ejecución:** Cómo se corre el código principal.
 
 ---
 
@@ -88,7 +92,10 @@ Repositorio del grupo 10 para el proyecto del ramo *Proyecto Inicial (IWG400)* �
 
 ## 📚 Bibliografía
 
-[Enlace](https://google.com)
+[Enlace](https://www.topwaydisplay.com/en/blog/tft-display-controller-guide)
+[Enlace](https://www.youtube.com/watch?v=haONy1NLKYs)
+[Enlace](https://randomnerdtutorials.com/getting-started-with-esp32/)
+Asistentes de IA: Claude y Gemini
 
 ---
 
