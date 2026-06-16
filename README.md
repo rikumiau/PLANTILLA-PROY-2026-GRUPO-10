@@ -92,9 +92,9 @@ Repositorio del grupo 10 para el proyecto del ramo *Proyecto Inicial (IWG400)* �
 
 ## 📚 Bibliografía
 
-[Enlace](https://www.topwaydisplay.com/en/blog/tft-display-controller-guide)
-[Enlace](https://www.youtube.com/watch?v=haONy1NLKYs)
-[Enlace](https://randomnerdtutorials.com/getting-started-with-esp32/)
+[A Beginner's Guide to TFT Display Controllers](https://www.topwaydisplay.com/en/blog/tft-display-controller-guide)
+[How to use Soil moisture Sensor with Arduino](https://www.youtube.com/watch?v=haONy1NLKYs)
+[Getting Started with the ESP32 Development Board](https://randomnerdtutorials.com/getting-started-with-esp32/)
 Asistentes de IA: Claude y Gemini
 
 ---
