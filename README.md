@@ -78,9 +78,9 @@ Repositorio del grupo 10 para el proyecto del ramo *Proyecto Inicial (IWG400)* �
 ---
 
 ## 📐 Diseño del Sistema
-![Diagrama de Conexiones](./assets/diagrama_conexiones.png)
 
-*Explicacion grafica de como es la conexion entre el microcontrolador y los sensores*
+<img width="2746" height="2000" alt="image" src="https://github.com/user-attachments/assets/1f07912c-67df-4b3a-8447-111d1ab99b1f" />
+
 
 ---
 
