@@ -73,7 +73,7 @@ Repositorio del grupo 10 para el proyecto del ramo *Proyecto Inicial (IWG400)* �
    - Adafruit GFX Library
    - UniversalTelegramBot  (by Brian Lough)
    - ArduinoJson v6.x      (by Benoit Blanchon)
-4. **Ejecución:** Cómo se corre el código principal.
+4. **Ejecución:** Se debe crear una carpeta para añadir los archivos .ino, los .h se deben añadir a la carpeta, no es necesario poner los .h de los fondos ya que en el codigo final no se usaron, para recibir las notificaciones de telegram hay que buscar el bot @Sproutchibot en Telegram e iniciarlo. Hay que cambiar la información del WIFI para poder recibir las notificaciones (el prototipo funcionará aun sin tener WIFI, avisa si esta desconectado o no, pero no se podran recibir notificaciones).
 
 ---
 
