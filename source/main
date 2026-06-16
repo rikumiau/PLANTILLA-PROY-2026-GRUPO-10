@@ -8,8 +8,8 @@
 
 const char* WIFI_SSID     = "Amepuck";
 const char* WIFI_PASSWORD = "50000004";
-const char* BOT_TOKEN     = "8845077882:AAHvaQIV2PB0LHlw9JFfa3_b3k3i2BNMoxc";
-const char* CHAT_ID       = "8613132081";
+const char* BOT_TOKEN     = "bot_token";
+const char* CHAT_ID       = "chat_id";
 
 #define TFT_CS   15
 #define TFT_RST   4
