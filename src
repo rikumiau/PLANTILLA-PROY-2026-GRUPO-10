@@ -1,1 +1,606 @@
-aa
+#include <Adafruit_GFX.h>
+#include <Adafruit_ST7735.h>
+#include <SPI.h>
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
+#include <UniversalTelegramBot.h>
+#include <ArduinoJson.h>
+
+const char* WIFI_SSID     = "Amepuck";
+const char* WIFI_PASSWORD = "50000004";
+const char* BOT_TOKEN     = "8845077882:AAHvaQIV2PB0LHlw9JFfa3_b3k3i2BNMoxc";
+const char* CHAT_ID       = "8613132081";
+
+#define TFT_CS   15
+#define TFT_RST   4
+#define TFT_DC    2
+
+#define BTN_A 12
+#define BTN_B 13
+#define BTN_C 14
+
+#define PIN_SENSOR 34
+
+Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
+
+WiFiClientSecure clienteSeguro;
+UniversalTelegramBot bot(BOT_TOKEN, clienteSeguro);
+bool wifiConectado = false;
+
+#define UMBRAL_SECO        3000
+#define UMBRAL_NORMAL_MAX  2999
+#define UMBRAL_NORMAL_MIN  1800
+#define UMBRAL_FELIZ_MAX   1799
+#define UMBRAL_FELIZ_MIN   1100
+#define UMBRAL_INUNDADO     1099
+
+enum Estado { TRISTE, NORMAL, FELIZ, INUNDADO };
+Estado estadoActual   = NORMAL;
+Estado estadoAnterior = NORMAL;
+
+enum AnimID {
+  ANIM_IDLE_TRISTE,
+  ANIM_IDLE_NORMAL,
+  ANIM_IDLE_FELIZ,
+  ANIM_IDLE_INUNDADO,
+  ANIM_COMER,
+  ANIM_CANTAR,
+  ANIM_BAILAR,
+  ANIM_HISTORIA,
+  ANIM_JUEGO_IDLE,
+  ANIM_JUEGO_ATRAPAR,
+  ANIM_JUEGO_FALLAR
+};
+
+#define PW  160
+#define PH  128
+#define SW   48
+#define SH   48
+#define SPX  56
+#define SPY  47
+
+#define C_NEGRO    0x0000
+#define C_BLANCO   0xFFFF
+#define C_AMARILLO 0xFFE0
+#define C_ROJO     0xF800
+#define C_VERDE    0x07E0
+#define C_AZUL     0x001F
+#define C_AGUA     0x051D
+#define C_ROSA     0xFC18
+#define C_MARRON   0x8400
+#define C_MORADO   0x2945
+#define C_TRANSP   0xF81F
+
+bool estadoBoton[3]    = {HIGH, HIGH, HIGH};
+bool botonAnterior[3]  = {HIGH, HIGH, HIGH};
+
+bool botonPresionado(int idx, int pin) {
+  botonAnterior[idx] = estadoBoton[idx];
+  estadoBoton[idx]   = digitalRead(pin);
+  if (botonAnterior[idx] == HIGH && estadoBoton[idx] == LOW) {
+    delay(30);
+    if (digitalRead(pin) == LOW) return true;
+  }
+  return false;
+}
+
+bool botonSuelto(int idx, int pin) {
+  botonAnterior[idx] = estadoBoton[idx];
+  estadoBoton[idx]   = digitalRead(pin);
+  return (botonAnterior[idx] == LOW && estadoBoton[idx] == HIGH);
+}
+
+void actualizarBoton(int idx, int pin) {
+  botonAnterior[idx] = estadoBoton[idx];
+  estadoBoton[idx]   = digitalRead(pin);
+}
+
+struct Animacion {
+  uint8_t  numFrames;
+  uint16_t msPerFrame;
+  bool     loop;
+  AnimID   animAlTerminar;
+};
+
+const Animacion ANIMS[] = {
+  {  2,   200,  true,  ANIM_IDLE_TRISTE   },  // triste_idle
+  {  2,   400,  true,  ANIM_IDLE_NORMAL   },  // normal_idle
+  {  2,   200,  true,  ANIM_IDLE_FELIZ    },  // feliz_idle
+  {  2,   150,  true,  ANIM_IDLE_INUNDADO },  // inundado_idle
+  {  3,   350,  false, ANIM_IDLE_FELIZ    },  // comer — 3 frames
+  {  2,   350,  true,  ANIM_IDLE_FELIZ    },  // cantar — 2 frames
+  {  2,   350,  true,  ANIM_IDLE_FELIZ    },  // bailar — 2 frames
+  {  2,   500,  true,  ANIM_IDLE_NORMAL   },  // historia — 2 frames
+  {  2,   300,  true,  ANIM_JUEGO_IDLE    },  // juego_idle
+  {  2,    80,  false, ANIM_JUEGO_IDLE    },  // juego_atrapar — 2 frames
+  {  2,   150,  false, ANIM_JUEGO_IDLE    },  // juego_fallar
+};
+
+AnimID animActual  = ANIM_IDLE_NORMAL;
+int    frameActual = 0;
+unsigned long tiempoUltimoFrame = 0;
+bool enInteraccionSostenida = false;
+
+void cambiarAnimacion(AnimID nueva) {
+  animActual  = nueva;
+  frameActual = 0;
+  tiempoUltimoFrame = millis();
+}
+
+AnimID idleDeEstado(Estado e) {
+  switch (e) {
+    case TRISTE:   return ANIM_IDLE_TRISTE;
+    case NORMAL:   return ANIM_IDLE_NORMAL;
+    case FELIZ:    return ANIM_IDLE_FELIZ;
+    case INUNDADO: return ANIM_IDLE_INUNDADO;
+  }
+  return ANIM_IDLE_NORMAL;
+}
+
+bool tickAnimacion() {
+  unsigned long ahora = millis();
+  const Animacion& a  = ANIMS[(int)animActual];
+  if (ahora - tiempoUltimoFrame < a.msPerFrame) return false;
+  tiempoUltimoFrame = ahora;
+  frameActual++;
+  if (frameActual >= a.numFrames) {
+    if (a.loop) {
+      frameActual = 0;
+    } else {
+      frameActual = a.numFrames - 1;
+      cambiarAnimacion(a.animAlTerminar);
+    }
+  }
+  return true;
+}
+
+#include "triste_idle.h"
+#include "normal_idle.h"
+#include "feliz_idle.h"
+#include "inundado_idle.h"
+#include "comer.h"
+#include "cantar.h"
+#include "bailar.h"
+#include "historia.h"
+#include "juego_idle.h"
+#include "juego_atrapar.h"
+#include "juego_fallar.h"
+#include "sprite_gota.h"
+
+const uint16_t* const frames_triste_idle[]   = { triste_idle_0,   triste_idle_1 };
+const uint16_t* const frames_normal_idle[]   = { normal_idle_0,   normal_idle_1 };
+const uint16_t* const frames_feliz_idle[]    = { feliz_idle_0,    feliz_idle_1  };
+const uint16_t* const frames_inundado_idle[] = { inundado_idle_0, inundado_idle_1 };
+const uint16_t* const frames_comer[]         = { comer_0, comer_1, comer_2 };
+const uint16_t* const frames_cantar[]        = { cantar_0, cantar_1 };
+const uint16_t* const frames_bailar[]        = { bailar_0, bailar_1 };
+const uint16_t* const frames_historia[]      = { historia_0, historia_1 };
+const uint16_t* const frames_juego_idle[]    = { juego_idle_0,    juego_idle_1 };
+const uint16_t* const frames_juego_atrapar[] = { juego_atrapar_0, juego_atrapar_1 };
+const uint16_t* const frames_juego_fallar[]  = { juego_fallar_0,  juego_fallar_1 };
+
+unsigned long tiempoSensor      = 0;
+unsigned long tiempoUltimaNotif = 0;
+#define INTERVALO_SENSOR   5000
+#define INTERVALO_NOTIF    300000
+
+bool modoMinijuego   = false;
+int  juegoPlantaX    = 80;
+int  juegoGotaX      = 0;
+int  juegoGotaY      = 0;
+int  juegoPuntos     = 0;
+int  gotasTotales    = 0;
+bool mostrandoEfecto = false;
+unsigned long tiempoJuego = 0;
+#define VELOCIDAD_GOTA  30
+#define GOTA_RADIO       5
+
+void conectarWiFi();
+void leerSensor();
+void actualizarEstado(int lectura);
+void dibujarPantalla();
+void dibujarFondoPlaceholder(Estado e);
+void dibujarZonaSprite();
+void dibujarFrameActual();
+void dibujarUI();
+void procesarBotonA();
+void procesarBotonB();
+void terminarInteraccion();
+void iniciarMinijuego();
+void actualizarMinijuego();
+void terminarMinijuego();
+void enviarTelegram(const char* mensaje);
+void dibujarSpritePROGMEM(const uint16_t* sprite, int x, int y, int w, int h);
+void dibujarCaritaPlaceholder(int cx, int cy);
+void dibujarGota(int x, int y);
+
+void setup() {
+  Serial.begin(115200);
+
+  tft.initR(INITR_BLACKTAB);
+  tft.setRotation(1);
+  tft.fillScreen(0x0000);
+
+  tft.setTextColor(0xFFE0); tft.setTextSize(1);
+  tft.setCursor(18, 40); tft.println("Tamagotchi Planta");
+  tft.setTextColor(0xFFFF);
+  tft.setCursor(30, 58); tft.println("Conectando WiFi...");
+
+  pinMode(12, INPUT_PULLUP);
+  pinMode(13, INPUT_PULLUP);
+  pinMode(14, INPUT_PULLUP);
+
+  conectarWiFi();
+
+  leerSensor();
+  cambiarAnimacion(idleDeEstado(estadoActual));
+  dibujarFondoPlaceholder(estadoActual);
+  dibujarFrameActual();
+  dibujarUI();
+}
+
+void loop() {
+  unsigned long ahora = millis();
+
+  if (ahora - tiempoSensor >= 5000) {
+    tiempoSensor = ahora;
+    leerSensor();
+  }
+
+  if (tickAnimacion()) {
+    dibujarFondoPlaceholder(estadoActual);
+    dibujarFrameActual();
+    dibujarUI();
+  }
+
+  bool enAccion = (animActual == ANIM_COMER);
+
+  if (!enAccion && !modoMinijuego && !enInteraccionSostenida) {
+    if (botonPresionado(0, BTN_A)) procesarBotonA();
+    if (botonPresionado(1, BTN_B)) procesarBotonB();
+    if (botonPresionado(2, BTN_C)) iniciarMinijuego();
+  } else if (enInteraccionSostenida) {
+    if (botonSuelto(1, BTN_B)) {
+      terminarInteraccion();
+    } else {
+      actualizarBoton(1, BTN_B);
+    }
+    actualizarBoton(0, BTN_A);
+    actualizarBoton(2, BTN_C);
+  } else if (enAccion) {
+    actualizarBoton(0, BTN_A);
+    actualizarBoton(1, BTN_B);
+    actualizarBoton(2, BTN_C);
+  } else if (modoMinijuego) {
+    actualizarMinijuego();
+  }
+}
+
+void conectarWiFi() {
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  int intentos = 0;
+  while (WiFi.status() != WL_CONNECTED && intentos < 20) {
+    delay(500);
+    intentos++;
+  }
+  if (WiFi.status() == WL_CONNECTED) {
+    wifiConectado = true;
+    clienteSeguro.setInsecure();
+    tft.setCursor(30, 76);
+    tft.setTextColor(C_VERDE); tft.setTextSize(1);
+    tft.println("WiFi conectado!");
+    delay(800);
+    enviarTelegram("Sproutchi iniciado! Estoy vigilando tu planta.");
+  } else {
+    wifiConectado = false;
+    tft.setCursor(18, 76);
+    tft.setTextColor(C_ROJO); tft.setTextSize(1);
+    tft.println("Sin WiFi");
+    delay(1500);
+  }
+}
+
+void enviarTelegram(const char* mensaje) {
+  if (!wifiConectado || WiFi.status() != WL_CONNECTED) return;
+  bot.sendMessage(CHAT_ID, mensaje, "");
+  Serial.print("Telegram: "); Serial.println(mensaje);
+}
+
+void leerSensor() {
+  int lectura = analogRead(PIN_SENSOR);
+  Serial.print("Sensor: "); Serial.println(lectura);
+  actualizarEstado(lectura);
+}
+
+void actualizarEstado(int lectura) {
+  estadoAnterior = estadoActual;
+
+  if      (lectura > UMBRAL_SECO)                                        estadoActual = TRISTE;
+  else if (lectura >= UMBRAL_NORMAL_MIN && lectura <= UMBRAL_NORMAL_MAX) estadoActual = NORMAL;
+  else if (lectura >= UMBRAL_FELIZ_MIN  && lectura <= UMBRAL_FELIZ_MAX)  estadoActual = FELIZ;
+  else if (lectura < UMBRAL_INUNDADO)                                    estadoActual = INUNDADO;
+  else                                                                   estadoActual = NORMAL;
+
+  if (estadoActual != estadoAnterior) {
+    dibujarPantalla();
+    cambiarAnimacion(idleDeEstado(estadoActual));
+
+    unsigned long ahora = millis();
+    if (ahora - tiempoUltimaNotif >= INTERVALO_NOTIF) {
+      if (estadoActual == TRISTE) {
+        enviarTelegram("ALERTA: Tengo sed! dame agua!");
+        tiempoUltimaNotif = ahora;
+      } else if (estadoActual == INUNDADO) {
+        enviarTelegram("ALERTA: Me estoy ahogando! quitame agua!");
+        tiempoUltimaNotif = ahora;
+      }
+    }
+  }
+}
+
+void dibujarPantalla() {
+  dibujarFondoPlaceholder(estadoActual);
+  dibujarFrameActual();
+  dibujarUI();
+}
+
+void dibujarZonaSprite() {
+  dibujarFondoPlaceholder(estadoActual);
+  dibujarFrameActual();
+}
+
+
+void dibujarFrameActual() {
+  const uint16_t* const* framesPtr;
+  switch (animActual) {
+    case ANIM_IDLE_TRISTE:   framesPtr = frames_triste_idle;   break;
+    case ANIM_IDLE_NORMAL:   framesPtr = frames_normal_idle;   break;
+    case ANIM_IDLE_FELIZ:    framesPtr = frames_feliz_idle;    break;
+    case ANIM_IDLE_INUNDADO: framesPtr = frames_inundado_idle; break;
+    case ANIM_COMER:         framesPtr = frames_comer;         break;
+    case ANIM_CANTAR:        framesPtr = frames_cantar;        break;
+    case ANIM_BAILAR:        framesPtr = frames_bailar;        break;
+    case ANIM_HISTORIA:      framesPtr = frames_historia;      break;
+    case ANIM_JUEGO_IDLE:    framesPtr = frames_juego_idle;    break;
+    case ANIM_JUEGO_ATRAPAR: framesPtr = frames_juego_atrapar; break;
+    case ANIM_JUEGO_FALLAR:  framesPtr = frames_juego_fallar;  break;
+    default:                 framesPtr = frames_normal_idle;   break;
+  }
+  dibujarSpritePROGMEM(framesPtr[frameActual], SPX, SPY, SW, SH);
+}
+
+void dibujarSpritePROGMEM(const uint16_t* sprite, int x, int y, int w, int h) {
+  for (int i = 0; i < w * h; i++) {
+    uint16_t color = pgm_read_word(&sprite[i]);
+    if (color != C_TRANSP) {
+      tft.drawPixel(x + (i % w), y + (i / w), color);
+    }
+  }
+}
+
+void dibujarUI() {
+  const char* texto;
+  switch (estadoActual) {
+    case TRISTE:   texto = "SECA :(";   break;
+    case NORMAL:   texto = "NORMAL";    break;
+    case FELIZ:    texto = "FELIZ :)";  break;
+    case INUNDADO: texto = "INUNDADA!"; break;
+    default:       texto = "NORMAL";    break;
+  }
+  tft.fillRect(0, 0, PW, 18, C_NEGRO);
+  tft.setTextColor(C_AMARILLO); tft.setTextSize(1);
+  tft.setCursor(4, 5); tft.print(texto);
+  tft.fillCircle(153, 9, 5, wifiConectado ? C_VERDE : C_ROJO);
+  tft.fillRect(0, 120, PW, 8, C_NEGRO);
+  tft.setTextColor(0xAD55); tft.setTextSize(1);
+  tft.setCursor(2, 121); tft.print("A=agua  B=anim  C=juego");
+}
+
+void dibujarFondoPlaceholder(Estado e) {
+  switch (e) {
+    case TRISTE:
+      tft.fillScreen(0x8200);
+      for (int i = 0; i < 6; i++) {
+        tft.drawLine(20+i*22, 80, 30+i*22, 128, 0x6000);
+        tft.drawLine(30+i*22, 95, 15+i*22, 128, 0x6000);
+      }
+      tft.fillCircle(140, 14, 13, C_AMARILLO);
+      tft.fillCircle(140, 14, 9, 0xFC00);
+      break;
+    case NORMAL:
+      tft.fillScreen(0x4A9F);
+      tft.fillRect(0, 90, 160, 38, 0x4208);
+      tft.fillRoundRect(10, 20, 40, 14, 7, C_BLANCO);
+      tft.fillRoundRect(100, 28, 35, 12, 6, C_BLANCO);
+      tft.fillCircle(145, 16, 10, C_AMARILLO);
+      break;
+    case FELIZ:
+      tft.fillScreen(0x67FF);
+      tft.fillRect(0, 88, 160, 40, 0x2540);
+      tft.fillCircle(15, 95, 5, C_ROSA);
+      tft.fillCircle(145, 92, 5, C_ROJO);
+      tft.fillCircle(130, 103, 4, C_AMARILLO);
+      tft.fillCircle(10, 15, 11, C_AMARILLO);
+      for (int a = 0; a < 360; a += 45) {
+        float r = a * 3.14159 / 180.0;
+        tft.drawLine(10, 15, 10+17*cos(r), 15+17*sin(r), C_AMARILLO);
+      }
+      break;
+    case INUNDADO:
+      tft.fillScreen(0x0010);
+      tft.fillRect(0, 72, 160, 56, C_AGUA);
+      for (int x = 0; x < 160; x += 20) {
+        tft.drawLine(x, 72, x+10, 67, 0x3D7F);
+        tft.drawLine(x+10, 67, x+20, 72, 0x3D7F);
+      }
+      for (int i = 0; i < 12; i++) {
+        int rx = (i*37)%155, ry = (i*23)%62;
+        tft.drawLine(rx, ry, rx-2, ry+8, 0x3D7F);
+      }
+      break;
+  }
+}
+
+void dibujarCaritaPlaceholder(int cx, int cy) {
+  tft.fillCircle(cx, cy, 20, C_AMARILLO);
+  tft.drawCircle(cx, cy, 20, C_MARRON);
+  if (frameActual == 0) {
+    tft.fillCircle(cx-7, cy-5, 3, C_NEGRO);
+    tft.fillCircle(cx+7, cy-5, 3, C_NEGRO);
+    tft.fillCircle(cx-5, cy-7, 1, C_BLANCO);
+    tft.fillCircle(cx+9, cy-7, 1, C_BLANCO);
+  } else {
+    tft.drawLine(cx-10, cy-5, cx-4, cy-5, C_NEGRO);
+    tft.drawLine(cx+4,  cy-5, cx+10, cy-5, C_NEGRO);
+  }
+  switch (estadoActual) {
+    case TRISTE:
+      tft.drawLine(cx-7, cy+12, cx,   cy+16, C_NEGRO);
+      tft.drawLine(cx,   cy+16, cx+7, cy+12, C_NEGRO);
+      tft.fillCircle(cx+12, cy+2, 2, C_AZUL);
+      tft.fillCircle(cx+13, cy+6, 2, C_AZUL);
+      break;
+    case NORMAL:
+      tft.drawLine(cx-7, cy+12, cx+7, cy+12, C_NEGRO);
+      break;
+    case FELIZ:
+      tft.drawLine(cx-7, cy+14, cx,   cy+10, C_NEGRO);
+      tft.drawLine(cx,   cy+10, cx+7, cy+14, C_NEGRO);
+      tft.fillCircle(cx-13, cy+4, 4, C_ROSA);
+      tft.fillCircle(cx+13, cy+4, 4, C_ROSA);
+      break;
+    case INUNDADO:
+      tft.fillCircle(cx, cy+12, 7, C_NEGRO);
+      tft.fillCircle(cx, cy+12, 5, C_BLANCO);
+      tft.fillCircle(cx-16, cy-12, 3, C_AZUL);
+      tft.fillCircle(cx+18, cy+4,  3, C_AZUL);
+      break;
+  }
+}
+
+void dibujarGota(int x, int y) {
+  tft.fillCircle(x, y, GOTA_RADIO, C_AGUA);
+  tft.drawPixel(x-1, y-2, C_BLANCO);
+}
+
+void procesarBotonA() {
+  dibujarFondoPlaceholder(estadoActual);
+  cambiarAnimacion(ANIM_COMER);
+  tft.fillRect(0, 0, PW, 18, C_NEGRO);
+  tft.setTextColor(C_AGUA); tft.setTextSize(1);
+  tft.setCursor(4, 5); tft.print("nom nom nom");
+}
+
+void procesarBotonB() {
+  enInteraccionSostenida = true;
+  int tipo = random(3);
+  dibujarFondoPlaceholder(estadoActual);
+
+  if (tipo == 0) {
+    cambiarAnimacion(ANIM_CANTAR);
+    tft.fillRect(0, 0, PW, 18, C_NEGRO);
+    tft.setTextColor(C_AMARILLO); tft.setTextSize(1);
+    tft.setCursor(4, 5); tft.print("La la la la~");
+  } else if (tipo == 1) {
+    cambiarAnimacion(ANIM_BAILAR);
+    tft.fillRect(0, 0, PW, 18, C_NEGRO);
+    tft.setTextColor(C_AMARILLO); tft.setTextSize(1);
+    tft.setCursor(4, 5); tft.print("Bip bop bip!");
+  } else {
+    cambiarAnimacion(ANIM_HISTORIA);
+    tft.fillRect(0, 0, PW, 18, C_NEGRO);
+    tft.setTextColor(C_AMARILLO); tft.setTextSize(1);
+    tft.setCursor(4, 5); tft.print("Habia una vez...");
+  }
+}
+
+void terminarInteraccion() {
+  enInteraccionSostenida = false;
+  cambiarAnimacion(idleDeEstado(estadoActual));
+  dibujarPantalla();
+}
+
+void iniciarMinijuego() {
+  modoMinijuego   = true;
+  juegoPuntos     = 0;
+  gotasTotales    = 0;
+  juegoPlantaX    = 80;
+  juegoGotaX      = random(15, 145);
+  juegoGotaY      = 5;
+  mostrandoEfecto = false;
+  tiempoJuego     = millis();
+
+  tft.fillScreen(0x000A);
+  tft.setTextColor(C_BLANCO); tft.setTextSize(1);
+  tft.setCursor(8, 22); tft.println("ATRAPA LAS GOTAS!");
+  tft.setCursor(8, 42); tft.println("A=izq   C=der");
+  tft.setCursor(8, 60); tft.println("B=salir");
+  tft.setCursor(8, 80); tft.println("10 gotas en total");
+  delay(2000);
+  tft.fillScreen(0x000A);
+  cambiarAnimacion(ANIM_JUEGO_IDLE);
+}
+
+void actualizarMinijuego() {
+  if (!modoMinijuego) return;
+
+  unsigned long ahora = millis();
+  if (ahora - tiempoJuego < VELOCIDAD_GOTA) return;
+  tiempoJuego = ahora;
+
+  // Borrar frame anterior
+  dibujarFondoPlaceholder(estadoActual);
+
+  // Controles
+  if (digitalRead(BTN_A) == LOW && juegoPlantaX > 26)   juegoPlantaX -= 4;
+  if (digitalRead(BTN_C) == LOW && juegoPlantaX < 134)  juegoPlantaX += 4;
+  if (botonPresionado(1, BTN_B)) { terminarMinijuego(); return; }
+
+  juegoGotaY += 3;
+
+  // Dibujar personaje con sprite
+  dibujarSpritePROGMEM(frames_normal_idle[frameActual], juegoPlantaX - SW/2, 95 - SH, SW, SH);
+
+  dibujarGota(juegoGotaX, juegoGotaY);
+
+  // Marcador
+  tft.fillRect(0, 0, 120, 14, 0x0000);
+  tft.setTextColor(C_AMARILLO); tft.setTextSize(1);
+  tft.setCursor(3, 3);
+  tft.print("Gotas: "); tft.print(juegoPuntos);
+  tft.print("/"); tft.print(gotasTotales);
+
+  if (juegoGotaY >= 115 - SH) {
+    gotasTotales++;
+
+    if (abs(juegoGotaX - juegoPlantaX) < 22) {
+      juegoPuntos++;
+    }
+
+    juegoGotaX = random(15, 145);
+    juegoGotaY = 5;
+
+    if (gotasTotales >= 10) { terminarMinijuego(); return; }
+  }
+}
+void terminarMinijuego() {
+  modoMinijuego = false;
+
+  tft.fillScreen(C_MORADO);
+  tft.setTextColor(C_AMARILLO); tft.setTextSize(2);
+  tft.setCursor(45, 22); tft.println("FIN!");
+
+  tft.setTextSize(1); tft.setTextColor(C_BLANCO);
+  tft.setCursor(32, 56);
+  tft.print("Atrapaste: "); tft.print(juegoPuntos); tft.println("/10");
+
+  tft.setCursor(10, 76);
+  if      (juegoPuntos >= 9) { tft.setTextColor(C_AMARILLO); tft.println("   PERFECTA!!! :D"); }
+  else if (juegoPuntos >= 7) { tft.setTextColor(C_VERDE);    tft.println("   Muy bien! :)");   }
+  else if (juegoPuntos >= 4) { tft.setTextColor(C_BLANCO);   tft.println("   Bien! sigue!");   }
+  else                       { tft.setTextColor(C_ROJO);     tft.println("   Intenta de nuevo!");}
+
+  delay(3500);
+  cambiarAnimacion(idleDeEstado(estadoActual));
+  dibujarPantalla();
+}
