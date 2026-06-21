@@ -99,6 +99,12 @@ Asistentes de IA: Claude y Gemini
 
 ---
 
+## 🎥 Video explicativo
+
+https://youtube.com/shorts/xxcdFh956Wg?si=O9YOuBERhZw66B_Z
+
+---
+
 ## 📌 Notas adicionales
 
 > *Espacio para dejar cualquier comentario útil, como pendientes, acuerdos del grupo, consideraciones especiales, etc.*
